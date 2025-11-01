@@ -44,7 +44,18 @@ class DigisParser(BaseParser, ABC):
         Returns:
             Краткое описание продукта
         """
-        pass
+        
+    @abstractmethod
+    def _extract_full_description(self, soup: BeautifulSoup) -> str:
+        """
+        Извлекает краткое описание продукта.
+        
+        Args:
+            soup: BeautifulSoup объект страницы продукта
+            
+        Returns:
+            Краткое описание продукта
+        """
     
     @abstractmethod
     def _extract_digis_code(self, soup: BeautifulSoup) -> int:
@@ -178,6 +189,7 @@ class DigisParser(BaseParser, ABC):
             product_data = {
                 'title': self._extract_title(soup),
                 'short_description': self._extract_description(soup),
+                'full_description': self._extract_full_description(soup),
                 'code_digis': self._extract_digis_code(soup),
                 'article': self._extract_article(soup),
                 'price': self._extract_price(soup),
@@ -225,6 +237,17 @@ class ConcreteDigisParser(DigisParser):
             logger.warning(f"Ошибка извлечения описания: {e}")
             return ""
     
+    def _extract_full_description(self, soup):
+        """Реализация извлечения полного описания для Digis."""
+        logger.debug("Попытка извлечь full_description")
+        try:
+            description = ' '.join(x.get_text(strip=True) for x in soup.select("#tab_description p"))
+            return description
+        except Exception as e:
+            logger.warning(f"Ошибка извлечения полного описания: {e}")
+            return ""
+            
+    
     def _extract_digis_code(self, soup: BeautifulSoup) -> int:
         """Реализация извлечения кода Digis."""
         logger.debug("Попытка извлечь артикул")
@@ -268,6 +291,9 @@ class ConcreteDigisParser(DigisParser):
         try:
             price = {}
             price_element = soup.select_one('div.price')
+            if not price_element:
+                logger.info("Не найдена цена")
+                return "0"
             
             current_value = price_element.select_one('.val')
             current_currency = price_element.select_one('.currency')
@@ -290,22 +316,34 @@ class ConcreteDigisParser(DigisParser):
             logger.warning(f"Ошибка извлечения цены: {e}")
             return "0"
     
-    def _extract_poster(self, soup: BeautifulSoup) -> str:
+    def _extract_poster(self, soup: BeautifulSoup) -> list[str]:
         """Реализация извлечения постера."""
         try:
+            urls = []
             poster_element = soup.select('#prod-gallery .swiper-slide')
             for poster in poster_element:
                 if not poster.a and not poster.img:
                     continue
                 try:
-                    return self._safe_extract_url(poster.a, 'href')
+                    urls.append(self._safe_extract_url(poster.a, 'href'))
                 except Exception:
-                    return self._safe_extract_url(poster.img, 'src')
-            return "https://digis.ru/bitrix_personal/templates/ia_pegas_digis/images/tmp/42_282.jpg"
+                    urls.append(self._safe_extract_url(poster.img, 'src'))
+            
+            if urls:
+                return urls
+
+            else:
+                for poster in soup.select(".prod-detail-img img"):
+                    urls.append(self._safe_extract_url(poster, 'src'))
+                
+                if not urls:
+                    return ["https://digis.ru/bitrix_personal/templates/ia_pegas_digis/images/tmp/42_282.jpg"]
+                
+            return urls
                 
         except Exception as e:
             logger.warning(f"Ошибка извлечения постера: {e}")
-            return ""
+            return ["https://digis.ru/bitrix_personal/templates/ia_pegas_digis/images/tmp/42_282.jpg"]
     
     def _extract_characteristics(self, soup: BeautifulSoup) -> Dict[str, str]:
         """Реализация извлечения характеристик."""
@@ -340,19 +378,17 @@ class ConcreteDigisParser(DigisParser):
             logger.warning(f"Ошибка извлечения спецификаций: {e}")
             return {}
     
-    def _extract_documentation(self, soup: BeautifulSoup) -> Dict[str, str]:
+    def _extract_documentation(self, soup: BeautifulSoup) -> List[str]:
         """Реализация извлечения документации."""
         try:
-            documentation = {}
+            documentation = []
             doc_elements = soup.select('#tab_documentation tr')
             for element in doc_elements:
-                doc_name = element.select_one('.ttl')
                 doc_url = element.select_one('.td-btn a')
-                if not doc_name or not doc_url:
+                if not doc_url:
                     logger.warning("Пустое значение")
                     continue
-                
-                documentation[doc_name.get_text(strip=True)] = self._safe_extract_url(doc_url, 'href')
+                documentation.append(self._safe_extract_url(doc_url, 'href'))
             return documentation
         except Exception as e:
             logger.warning(f"Ошибка извлечения документации: {e}")
@@ -364,9 +400,9 @@ class ConcreteDigisParser(DigisParser):
             accessories = []
             accessory_elements = soup.select('#tab_accessories tr')
             for element in accessory_elements:
-                name = element.select_one('.ttl')
+                name = element.select_one('.col-body a')
                 if name:
-                    accessories.append(name.get_text(strip=True))
+                    accessories.append(self._safe_extract_url(name, 'href'))
             return accessories
         except Exception as e:
             logger.warning(f"Ошибка извлечения аксессуаров: {e}")

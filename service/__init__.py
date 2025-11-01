@@ -6,6 +6,7 @@ from typing import List, NoReturn, Optional
 import aiohttp
 import aiofiles
 import aiocsv
+import pandas as pd
 
 from loguru import logger
 
@@ -33,7 +34,8 @@ class DigisAPI:
         fp_csv: str | Path, 
         safe_urls: bool,
         *,
-        batch_size: int = 1000
+        batch_size: int = 1000, 
+        urls_path: str | Path | None = None
     ) -> NoReturn:
         """
         Запускает парсинг продуктов с ограничением одновременных запросов.
@@ -53,7 +55,13 @@ class DigisAPI:
         try:
             # Инициализация данных
             await self._generator.update()
-            urls = await self._digis_manager.extract_all_urls(safe_urls)
+            if not urls_path:
+                urls = len(await self._digis_manager.extract_all_urls(safe_urls))
+            else:
+                urls = []
+                data = pd.read_excel(urls_path)
+                for indx, line in data.iterrows():
+                    urls.append(line["URL"])
             logger.info(f"Найдено {len(urls)} URL для парсинга")
             
             # Создание семафора для ограничения одновременных запросов
@@ -64,8 +72,7 @@ class DigisAPI:
                 
                 # Записываем заголовки
                 headers = [
-                    "Название", "Короткое описание", "Код Digis", "Артикул", 
-                    "Цена", "Изображение", "Бренд"
+                    "Название", "Короткое описание", "Полное описание", "Код Digis", "Артикул", "Цена", "Изображении", "Спецификации", "Документации", "Аксессуары", "Бренд"
                 ]
                 await csv_writer.writerow(headers)
                 
@@ -82,8 +89,7 @@ class DigisAPI:
                     )
                     successful += batch_results['successful']
                     failed += batch_results['failed']
-                    
-                    # Принудительная сборка мусора между батчами
+
                     if hasattr(asyncio, 'sleep'):
                         await asyncio.sleep(0.1)  # Даем event loop передохнуть
                 
@@ -162,14 +168,19 @@ class DigisAPI:
             
         Returns:
             Список значений для записи в CSV
+        #"Название", "Короткое описание", "Код Digis", "Артикул", "Цена", "Изображении", "Спецификации", "Документации", "Аксессуары", "Бренд"
         """
         flat_dict = product.as_flat_dict()
         return [
             flat_dict.get("Название", default),
             flat_dict.get("Короткое описание", default),
+            flat_dict.get("Полное описание", default),
             flat_dict.get("Код Digis", default),
             flat_dict.get("Артикул", default),
             flat_dict.get("Цена", default),
             flat_dict.get("Изображение", default),
-            flat_dict.get("Бренд", default)
+            flat_dict.get("Спецификации", default),
+            flat_dict.get("Документация", default),
+            flat_dict.get("Аксессуары", default),
+            flat_dict.get("Бренд", default),
         ]

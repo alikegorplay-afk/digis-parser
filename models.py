@@ -17,13 +17,14 @@ class Product:
     """Дата-класс для представления товара."""
     title: str
     short_description: str
+    full_description: str
     code_digis: int
     article: str
     price: int
-    poster: str
+    posters: List[str]
     characteristics: Dict[str, str]
     specification: Dict[str, str]
-    documentation: Dict[str, str]
+    documentation: List[str]
     accessories: List[str]
     brand: str
     
@@ -31,10 +32,11 @@ class Product:
         return {
             "Название": self.title,
             "Короткое описание": self.short_description,
+            "Полное описание": self.full_description,
             "Код Digis": self.code_digis,
             "Артикул": self.article,
             "Цена": self.price,
-            "Изображение": self.poster,
+            "Изображения": self.posters,
             "Характеристики": self.characteristics,
             "Спецификации": self.specification,
             "Документация": self.documentation,
@@ -55,21 +57,21 @@ class Product:
             {
                 "Название": "Смартфон Apple iPhone 15",
                 "Код Digis": "12345",
-                "Характеристики": "Цвет: черный; Память: 128ГБ",
+                "Характеристики": "Цвет: черный|| Память: 128ГБ",
                 ...
             }
         """
         return {
             "Название": self.title,
-            "Короткое описание": self.short_description,
+            "Короткое описание": self.short_description if self.short_description else "Нет",
+            "Полное описание": self.full_description if self.full_description else "Нет",
             "Код Digis": str(self.code_digis),
             "Артикул": self.article,
             "Цена": self._format_price(self.price),
-            "Изображение": self.poster,
-            "Характеристики": self._dict_to_string(self.characteristics),
-            "Спецификации": self._dict_to_string(self.specification),
-            "Документация": self._dict_to_string(self.documentation),
-            "Аксессуары": ", ".join(self.accessories) if self.accessories else "Нет",
+            "Изображение": '|| '.join(self.posters) ,
+            "Спецификации": self._dict_to_string(self.specification) if self.specification else "Нет",
+            "Документация": '|| '.join(self.documentation) if self.specification else "Нет",
+            "Аксессуары": "|| ".join(self.accessories) if self.accessories else "Нет",
             "Бренд": self.brand
         }
         
@@ -114,7 +116,7 @@ class Product:
             'code_digis': self.code_digis,
             'article': self.article,
             'price': self.price,
-            'poster': self.poster,
+            'poster': self.posters,
             'brand': self.brand,
             'characteristics': self._sort_dict(self.characteristics),
             'specification': self._sort_dict(self.specification),
@@ -319,13 +321,14 @@ class ProductGenerator(BaseParser):
         self,
         title: str,
         short_description: str,
+        full_description: str,
         code_digis: int,
         article: str,
         price: str,
-        poster: str,
+        poster: List[str],
         characteristics: Dict[str, str],
         specification: Dict[str, str],
-        documentation: Dict[str, str],
+        documentation: List[str],
         accessories: List[str],
     ) -> Product:
         """
@@ -334,6 +337,7 @@ class ProductGenerator(BaseParser):
         Args:
             title: Название товара
             short_description: Короткое описание
+            full_description: Полное описание
             code_digis: Код Digis
             article: Артикул
             price: Цена (строка)
@@ -350,10 +354,11 @@ class ProductGenerator(BaseParser):
         return Product(
             title=title.strip(),
             short_description=short_description.strip(),
+            full_description=full_description.strip(),
             code_digis=code_digis,
             article=article.strip(),
             price=self._safe_extract_price(price),
-            poster=poster.strip(),
+            posters=poster,
             characteristics=characteristics or {},
             specification=specification or {},
             documentation=documentation or {},
