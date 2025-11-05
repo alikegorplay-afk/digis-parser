@@ -3,12 +3,13 @@ import asyncio
 import aiohttp
 from loguru import logger
 from service import DigisAPI
+import pandas as pd
 
 async def main():
     async with aiohttp.ClientSession() as session:
         api = DigisAPI(session, 'https://digis.ru', sleep_time=5, parse_engine='lxml')
-            
         await api.start_parsing("hear.csv", True, urls_path = "urls/links.xlsx")
+        pd.read_csv("hear.csv").to_excel("FullData.xlsx")
 
         
         

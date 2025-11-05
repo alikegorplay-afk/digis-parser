@@ -241,7 +241,7 @@ class ConcreteDigisParser(DigisParser):
         """Реализация извлечения полного описания для Digis."""
         logger.debug("Попытка извлечь full_description")
         try:
-            description = ' '.join(x.get_text(strip=True) for x in soup.select("#tab_description p"))
+            description = soup.select_one("#tab_description").get_text(separator=' ', strip=True) if soup.select_one("#tab_description") else ""
             return description
         except Exception as e:
             logger.warning(f"Ошибка извлечения полного описания: {e}")

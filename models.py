@@ -68,10 +68,10 @@ class Product:
             "Код Digis": str(self.code_digis),
             "Артикул": self.article,
             "Цена": self._format_price(self.price),
-            "Изображение": '|| '.join(self.posters) ,
+            "Изображение": '; '.join(self.posters) ,
             "Спецификации": self._dict_to_string(self.specification) if self.specification else "Нет",
-            "Документация": '|| '.join(self.documentation) if self.specification else "Нет",
-            "Аксессуары": "|| ".join(self.accessories) if self.accessories else "Нет",
+            "Документация": '; '.join(self.documentation) if self.documentation else "Нет",
+            "Аксессуары": "; ".join(self.accessories) if self.accessories else "Нет",
             "Бренд": self.brand
         }
         
